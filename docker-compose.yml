@@ -2,7 +2,8 @@ version: "latest"
 
 services:
   api:
-    build: ./ToDo-API
+    # build: ./ToDo-API
+    image: radwamohamed125/todo-api
     container_name: todo_api
     ports:
       - "3000:3000"
@@ -10,7 +11,8 @@ services:
       - todo-network
 
   frontend:
-    build: ./ToDo-Frontend
+    # build: ./ToDo-Frontend
+    image: radwamohamed125/todo-frontend
     container_name: todo_frontend
     ports:
       - "8080:80"
