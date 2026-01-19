@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Todo</title>
+<link rel="stylesheet" href="css/register.css">
+<link rel="stylesheet" href="css/todo.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+</head>
+<body>
+<div class="container">
+    <div class="top-actions">
+        <h1>My Todo</h1>
+        <div>
+            <button id="logoutBtn" style="background:#e74c3c">Logout</button>
+        </div>
+    </div>
+
+    <div id="app">
+        <form id="addForm">
+            <div class="form-group">
+                <input id="title" name="title" required placeholder="Task title">
+                <button class="add" type="submit">+</button>
+            </div>
+        </form>
+
+        <div class="tasks-list" id="tasks">
+            <div class="small">Loading tasks...</div>
+        </div>
+
+        <div class="delete-all-container">
+            <button id="deleteAllBtn">Delete All Tasks</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tasksContainer = document.getElementById('tasks');
+    const addForm = document.getElementById('addForm');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const API_BASE = '/api';
+
+    // Fetch and render all tasks
+    async function loadTasks() {
+        try {
+            const url = `${API_BASE}/tasks`;
+            const res = await fetch(url, { credentials: 'include' });
+            console.log("fetch results");
+            if (!res.ok) throw new Error('Failed to fetch tasks');
+
+            const data = await res.json();
+            tasksContainer.innerHTML = '';
+            if (!data || data.length === 0) {
+                tasksContainer.innerHTML = '<div class="small">No tasks yet</div>';
+                return;
+            }
+
+            console.log(data);
+        
+            data.forEach(task => renderTask(task));
+        } catch (err) {
+            console.error(err);
+            tasksContainer.innerHTML = '<div class="small">Could not load tasks</div>';
+        }
+    }
+
+    // Render single task
+    function renderTask(task) {
+        const taskDiv = document.createElement('div');
+        taskDiv.className = 'task';
+        taskDiv.dataset.id = task._id;
+        taskDiv.innerHTML = `
+            <div class="task-content">
+                <input type="checkbox" class="taskCheckbox" ${task.completed ? 'checked' : ''} title="Mark as complete">
+                <div class="meta"><strong>${task.title}</strong></div>
+            </div>
+            <div>
+                <button class="deleteBtn" title="Delete task"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        `;
+        
+        const checkbox = taskDiv.querySelector('.taskCheckbox');
+        if (checkbox.checked) {
+            taskDiv.classList.add('completed');
+        } else {
+            taskDiv.classList.remove('completed');
+        }
+        checkbox.addEventListener('change', () => updateTaskStatus(task._id, checkbox.checked, taskDiv));
+        
+        taskDiv.querySelector('.deleteBtn').addEventListener('click', () => deleteTask(task._id, taskDiv));
+        tasksContainer.appendChild(taskDiv);
+    }
+
+    // Add new task
+    addForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const titleInput = document.getElementById('title');
+        const title = titleInput.value.trim();
+        if (!title) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/tasks/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ title })
+            });
+
+            if (!res.ok) {
+                const errMsg = await res.json();
+                throw new Error(errMsg || 'Could not add task');
+            }
+
+            const task = await res.json();
+            renderTask(task);
+            titleInput.value = '';
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            alert(err.message);
+        }
+    });
+
+    // Update task status
+    async function updateTaskStatus(id, completed, taskDiv) {
+        try {
+            const res = await fetch(`${API_BASE}/tasks/update/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ completed })
+            });
+            if (!res.ok) throw new Error('Update failed');
+            
+            // Toggle completed class for visual feedback
+            if (completed) {
+                taskDiv.classList.add('completed');
+            } else {
+                taskDiv.classList.remove('completed');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Could not update task status');
+        }
+    }
+
+    // Delete task
+    async function deleteTask(id, taskDiv) {
+        if (!confirm('Delete this task?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/tasks/delete/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Delete failed');
+            taskDiv.remove();
+            if (!tasksContainer.querySelector('.task')) {
+                tasksContainer.innerHTML = '<div class="small">No tasks yet</div>';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Could not delete task');
+        }
+    }
+
+    // Delete all tasks
+    deleteAllBtn.addEventListener('click', async () => {
+        if (!confirm('Delete all your tasks?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/tasks/deleteAll`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Delete all failed');
+            tasksContainer.innerHTML = '<div class="small">No tasks yet</div>';
+        } catch (err) {
+            console.error(err);
+            alert('Could not delete all tasks');
+        }
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            const res = await fetch(`${API_BASE}/users/logout`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            window.location.href = 'index.html';
+        } catch {
+            window.location.href = 'index.html';
+        }
+    });
+
+    // Initial load
+    loadTasks();
+});
+</script>
+</body>
+</html>

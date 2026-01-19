@@ -1,0 +1,24 @@
+version: "latest"
+
+services:
+  api:
+    build: ./ToDo-API
+    container_name: todo_api
+    ports:
+      - "3000:3000"
+    networks:
+      - todo-network
+
+  frontend:
+    build: ./ToDo-Frontend
+    container_name: todo_frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - todo-network
+
+networks:
+  todo-network:
+    driver: bridge
